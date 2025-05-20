@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { PDFDocument } from 'pdf-lib'
 import Link from 'next/link'
-
+import { saveAs } from 'file-saver'
 const App: React.FC = () => {
   const [pdfjsLib, setPdfjsLib] = useState<typeof import('pdfjs-dist') | null>(
     null
@@ -42,9 +42,7 @@ const App: React.FC = () => {
     promise: Promise<unknown>
   } | null>(null)
   useEffect(() => {
-    // โหลด PDF.js แบบ dynamic import
     import('pdfjs-dist').then((pdfjs) => {
-      // สำหรับเวอร์ชัน 3.x ขึ้นไป
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         'pdfjs-dist/build/pdf.worker.min.mjs',
         import.meta.url
@@ -66,7 +64,6 @@ const App: React.FC = () => {
     })
   }
 
-  // หยุด resize
   const stopResize = () => {
     setResizingImage(null)
     setResizeStart(null)
@@ -88,7 +85,7 @@ const App: React.FC = () => {
       setPdfDoc(pdf)
       setTotalPages(pdf.numPages)
       setCurrentPage(1)
-      setImages([]) // ล้างรูปภาพเมื่อโหลด PDF ใหม่
+      setImages([])
     } catch (error) {
       console.error('Error loading PDF:', error)
       alert('Failed to load PDF. Please try another file.')
@@ -131,7 +128,6 @@ const App: React.FC = () => {
       const canvas = canvasRef.current
       const context = canvas.getContext('2d')
 
-      // บันทึก viewport scale ไว้ใช้ตอน save
       canvas.height = viewport.height
       canvas.width = viewport.width
 
@@ -147,7 +143,6 @@ const App: React.FC = () => {
 
       await renderTask.promise
 
-      // วาดภาพ PNG
       images.forEach((img) => {
         const imgElement = new Image()
         imgElement.src = img.src
@@ -162,7 +157,6 @@ const App: React.FC = () => {
     }
   }
 
-  // เริ่มลากภาพ
   const startDrag = (e: React.MouseEvent, id: string) => {
     const img = images.find((img) => img.id === id)
     if (!img) return
@@ -176,7 +170,6 @@ const App: React.FC = () => {
     e.stopPropagation()
   }
 
-  // ขณะลากภาพ
   const onDrag = (e: React.MouseEvent) => {
     if (!isDragging || !selectedImage) return
 
@@ -194,13 +187,11 @@ const App: React.FC = () => {
     )
   }
 
-  // หยุดลากภาพ
   const stopDrag = () => {
     setIsDragging(false)
     setSelectedImage(null)
   }
 
-  // ขณะ resize ภาพ
   const onResize = (e: React.MouseEvent) => {
     if (!resizingImage || !resizeStart) return
 
@@ -226,7 +217,6 @@ const App: React.FC = () => {
     )
   }
 
-  // บันทึก PDF ใหม่ที่มีภาพ PNG
   const savePdfWithImages = async () => {
     if (!pdfDoc || images.length === 0) {
       alert('No PDF or images to save')
@@ -236,8 +226,6 @@ const App: React.FC = () => {
     try {
       const originalPdfBytes = await pdfDoc.getData()
       const pdfDocLib = await PDFDocument.load(originalPdfBytes)
-
-      // ต้องใช้ viewport เดียวกันกับที่ใช้แสดงผล
       const page = await pdfDoc.getPage(currentPage)
       const viewport = page.getViewport({ scale: 1.5 })
 
@@ -245,7 +233,6 @@ const App: React.FC = () => {
         const pdfPage = pdfDocLib.getPage(i)
         const { width, height } = pdfPage.getSize()
 
-        // คำนวณ scale factor
         const scaleX = width / viewport.width
         const scaleY = height / viewport.height
 
@@ -257,7 +244,7 @@ const App: React.FC = () => {
 
           pdfPage.drawImage(image, {
             x: img.x * scaleX,
-            y: height - img.y * scaleY - img.height * scaleY, // ปรับตำแหน่ง y
+            y: height - img.y * scaleY - img.height * scaleY,
             width: img.width * scaleX,
             height: img.height * scaleY,
           })
@@ -266,12 +253,7 @@ const App: React.FC = () => {
 
       const newPdfBytes = await pdfDocLib.save()
       const blob = new Blob([newPdfBytes], { type: 'application/pdf' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'modified.pdf'
-      a.click()
-      URL.revokeObjectURL(url)
+      saveAs(blob, 'modified.pdf')
     } catch (error) {
       console.error('Error saving PDF:', error)
       alert('Failed to save PDF')
@@ -302,7 +284,6 @@ const App: React.FC = () => {
     return { x: touch.clientX, y: touch.clientY }
   }
 
-  // Drag (Touch)
   const startDragTouch = (e: React.TouchEvent, id: string) => {
     const pos = getTouchPos(e)
     const img = images.find((img) => img.id === id)
@@ -338,7 +319,6 @@ const App: React.FC = () => {
     setSelectedImage(null)
   }
 
-  // Resize (Touch)
   const startResizeTouch = (e: React.TouchEvent, id: string) => {
     e.stopPropagation()
     const pos = getTouchPos(e)
@@ -483,14 +463,13 @@ const App: React.FC = () => {
                     border:
                       selectedImage === img.id ? '2px dashed #2563eb' : 'none',
                     pointerEvents: 'auto',
-                    touchAction: 'none', // ป้องกัน browser scroll
+                    touchAction: 'none',
                   }}
                   onMouseDown={(e) => startDrag(e, img.id)}
                   onTouchStart={(e) => startDragTouch(e, img.id)}
                   alt="Draggable PNG"
                   draggable={false}
                 />
-                {/* resize handle */}
                 <div
                   style={{
                     position: 'absolute',

@@ -40,7 +40,6 @@ export default function HomePage() {
     const pngImage = await pdfDoc.embedPng(sigDataUrl)
     const pngDims = pngImage.scale(0.5)
 
-    // วางลายเซ็นที่มุมซ้ายล่างของหน้าแรก (ปรับได้)
     firstPage.drawImage(pngImage, {
       x: 50,
       y: 50,
