@@ -1,13 +1,15 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
-import { PDFDocument, rgb } from 'pdf-lib'
-import { useRouter } from 'next/navigation'
+import { PDFDocument } from 'pdf-lib'
 import Link from 'next/link'
 
 const App: React.FC = () => {
-  const router = useRouter()
-  const [pdfjsLib, setPdfjsLib] = useState<any>(null)
-  const [pdfDoc, setPdfDoc] = useState<any>(null)
+  const [pdfjsLib, setPdfjsLib] = useState<typeof import('pdfjs-dist') | null>(
+    null
+  )
+  const [pdfDoc, setPdfDoc] = useState<
+    import('pdfjs-dist').PDFDocumentProxy | null
+  >(null)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [totalPages, setTotalPages] = useState<number>(0)
   const [images, setImages] = useState<
@@ -35,7 +37,10 @@ const App: React.FC = () => {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const renderTaskRef = useRef<any>(null)
+  const renderTaskRef = useRef<{
+    cancel: () => void
+    promise: Promise<unknown>
+  } | null>(null)
   useEffect(() => {
     // โหลด PDF.js แบบ dynamic import
     import('pdfjs-dist').then((pdfjs) => {
@@ -148,8 +153,10 @@ const App: React.FC = () => {
         imgElement.src = img.src
         context?.drawImage(imgElement, img.x, img.y, img.width, img.height)
       })
-    } catch (error: any) {
-      if (error?.name !== 'RenderingCancelledException') {
+    } catch (error: unknown) {
+      if (
+        (error as { name?: string })?.name !== 'RenderingCancelledException'
+      ) {
         console.error('Error rendering page:', error)
       }
     }
